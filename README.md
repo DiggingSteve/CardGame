@@ -1,2 +1,1 @@
-# ChatRoom
-聊天室
+﻿A card game with .netcore socket
