@@ -1,0 +1,220 @@
+﻿@{
+    ViewData["Title"] = ".Net Core Demo001";
+}
+
+
+
+<div class="line">
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+</div>
+<div class="line">
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+</div>
+<div class="line">
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+    <div class="block">
+        <div class="dis_tb">
+            <p class="text"></p>
+        </div>
+    </div>
+</div>
+
+
+<script src="~/lib/jquery/dist/jquery.js"></script>
+
+<script type="text/javascript">
+
+    var Block = (function () {
+        function block() {
+            this.blockList = [];
+            this.blockCount = 0;
+            this.init();
+        }
+        block.prototype.init = function () {
+            this.blockList = Array.prototype.slice.apply(document.querySelectorAll(".block"));
+            this.blockCount = this.blockList.length;
+            this.setEnvent();
+        }
+        block.prototype.setEnvent = function () {
+            var _this = this;
+            this.blockList.forEach(function (v,index) {
+                $(v).click(function () {
+                    _this.active(index, false);
+                });
+            });
+        }
+        block.prototype.active = function (index,isPost) {
+            $(this.blockList[index]).addClass("blockActive");
+            this.blockCount--;
+            this.blockCount == 0 && (setTimeout(function () { alert("完成") }, 100));
+            isPost|| this.ActiveOnlineBlock(index);
+        }
+        block.prototype.ActiveOnlineBlock = function (index) {
+            socket.send(JSON.stringify({ index: index }));
+        }
+        return block;
+    })()
+
+    var socket = null;
+    var blockGame = new Block();
+    initSocket();
+    function initSocket() {
+        //服务器
+        var ws = location.protocol === "https" ? "wss" : "ws";// https 对应修改 wss
+        var uri = ws + "://" + window.location.host + "/ws";
+
+        var time = null;
+        var timedCount = function () {
+            if (socket.readyState === 1)//1 - 表示连接已建立，可以进行通信。
+                socket.send("heartbeat");
+            time = setTimeout(timedCount, 58 * 1000); //58秒发一次心跳
+        }
+        if (socket === null || socket.readyState != 1) {//1 - 表示连接已建立，可以进行通信。
+            socket = new WebSocket(uri + "?userName=" + parseInt( Math.random() * 100));
+            timedCount();
+        }
+        //客户端接收服务端数据时触发
+        socket.onmessage = function (e) {
+            var chat = JSON.parse(e.data);
+            blockGame.active(chat.index, true);
+        };
+
+
+    }
+
+  
+   
+    //登录上下（连接）
+    function doConnect() {
+
+        var userName = HtmlUtil.htmlEncode($(".userName").val());
+        if (!userName) {
+            write({ "info": "撩妹得有个帅气的名字~~啊" });
+            return;
+        }
+        $(".btnLogin").prop("disabled", true)
+            .css("background-color", "#BFBFBF")
+            .text("登录中...");
+
+      
+
+        //连接建立时触发
+        socket.onopen = function (e) {
+            $(".logout").removeClass("displayNone");
+            $(".login").addClass("displayNone");
+        };
+        //连接关闭时触发
+        socket.onclose = function (e) {
+            if (e.code === 1008) {
+                write({ "info": userName + "，您已被迫下线。 " + e.reason });
+            }
+            else
+                write({ "info": userName + "，您已下线" });
+
+            $(".logout").addClass("displayNone");
+            $(".login").removeClass("displayNone");
+            $(".btnLogin").prop("disabled", false)
+                .css("background-color", "#fff")
+                .text("登录");
+            socket = null;
+            clearTimeout(time);
+        };
+        //客户端接收服务端数据时触发
+        socket.onmessage = function (e) {
+            var chat = JSON.parse(e.data);
+            write(chat);
+        };
+        //通信发生错误时触发
+        socket.onerror = function (e) {
+            if (e.data)
+                write({ "info": "异常: " + e.data });
+        };
+    }
+
+    //回车发送消息
+    $("#sendInput").keydown(function (e) {
+        if (e.keyCode === 13) {
+            doSendInput();
+        }
+    });
+
+    //回车登录
+    $(".userName").keydown(function (e) {
+        if (e.keyCode === 13) {
+            doConnect();
+        }
+    });
+
+    //发送消息
+    function doSendInput() {
+        if (!$("#sendInput").val()) {
+            return;
+        }
+        if (socket == null) {
+            write({ "info": "您还没有登录！" });
+            return;
+        }
+
+        write(chat, "me");
+        $("#sendInput").val("");
+    }
+
+    //下线（关闭连接）
+    function doDisconnect() {
+        socket.close();
+    }
+</script>
+
+
